@@ -1,6 +1,6 @@
 import arcade
 import random
-import pyglet
+from pyglet.math import Vec2
 
 class Player(arcade.Sprite):
 	def __init__(self, screen):
@@ -9,20 +9,29 @@ class Player(arcade.Sprite):
 		self.screen = screen
 		self.speed = 2
 		self.jump_speed = 7
+		self.superpower = 'earthquake'
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
 
 	def update(self):
-		self.update_player_speed()
-		super().update()
-		
-
-	def update_player_speed(self):
+		if self.superpower == 'superspeed':
+			self.speed = 20
+		if self.superpower == 'antigravity':
+			self.screen.physics_engine.gravity_constant = -0.01
 		self.change_x = 0
 		if self.keys['d'] and not self.keys['a']:
 			self.change_x = self.speed
 		if self.keys['a'] and not self.keys['d']:
 			self.change_x = -self.speed
-
-
+		super().update()
+	
+	def use_superpower(self):
+		if self.superpower == 'teleportation':
+			self.left = random.randint(0, self.screen.width-self.width)
+			self.bottom = random.randint(0, self.screen.height-self.height)
+		if self.superpower == 'earthquake':
+			self.screen.camera.shake(Vec2(random.randint(-2, 2), random.randint(-10, 10)), speed=1, damping=0.95)
+			self.screen.camera.update()
+		
 
 
 class Game(arcade.Window):
@@ -41,19 +50,20 @@ class Game(arcade.Window):
 			self.wall_list.append(a)
 
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.wall_list, gravity_constant=0.5)
+		self.camera = arcade.Camera()
 		
-		
-		
-
 	def on_update(self, delta_time):
 		self.player.update()
 		self.physics_engine.update()
+		position = Vec2(self.player.center_x - self.width / 2, 0)
+		self.camera.move_to(position, 0.05)
+
 
 	def on_draw(self):
 		self.clear()
+		self.camera.use()
 		self.player.draw()
 		self.wall_list.draw()
-
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W:
@@ -63,6 +73,8 @@ class Game(arcade.Window):
 			self.player.keys['d'] = True
 		if key == arcade.key.A:
 			self.player.keys['a'] = True
+		if key == arcade.key.F:
+			self.player.use_superpower()
 		
 	def on_key_release(self, key, modifiers):
 		if key == arcade.key.W:
@@ -71,8 +83,7 @@ class Game(arcade.Window):
 			self.player.keys['d'] = False
 		if key == arcade.key.A:
 			self.player.keys['a'] = False
+		
 
 
-
-game = Game()
-game.run()
+Game().run()
