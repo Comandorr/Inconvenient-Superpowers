@@ -4,7 +4,7 @@ from pyglet.math import Vec2
 
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
-		super().__init__(filename, scale=2, center_x = screen.width/2, center_y = 150)
+		super().__init__(filename, scale=1.5)
 		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
 		self.screen = screen
 		self.speed = 4
@@ -47,7 +47,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 	def get_superpower(self):
 		self.superpower = random.choice(self.superlist)
 		if self.superpower == 'teleportation':
-			self.timer_len = 10000
+			self.timer_len = 1
 
 class Game(arcade.Window):
 	def __init__(self):
