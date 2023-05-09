@@ -101,27 +101,16 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 	def update(self, delta_time = 1/60):
 		if self. hp <= 0:
 			self.kill()
-		self.path = arcade.astar_calculate_path([self.center_x, self.center_y], [self.screen.player.center_x, self.screen.player.center_y], self.bar_list)
+
 		self.change_x = 0
-		self.change_y = 0
-		if self.path and len(self.path) > 2:
-			dest_x = self.path[self.pos][0]
-			dest_y = self.path[self.pos][1]
-
-			x_diff = dest_x - self.center_x
-			y_diff = dest_y - self.center_y
-
-			angle = math.atan2(y_diff, x_diff)
-
-			distance = arcade.get_distance(self.center_x, self.center_y, dest_x, dest_y)
-			speed = min(self.speed, distance)
-			self.change_x = math.cos(angle) * speed
-			self.change_y = math.sin(angle) * speed
-
-			if distance <= self.speed:
-				self.pos += 1
-			if self.pos >= len(self.path):
-				self.pos = 0
+		distance = arcade.get_distance_between_sprites(self, self.screen.player)
+		pos1 = (self.center_x, self.center_y)
+		pos2 = (self.screen.player.center_x, self.screen.player.center_y)
+		if  distance< 500 and arcade.has_line_of_sight(pos1, pos2, self.screen.scene['Platforms']):
+			if self.screen.player.center_x > self.center_x:
+				self.change_x = min(self.speed, distance)
+			if self.screen.player.center_x < self.center_x:
+				self.change_x = -min(self.speed, distance)
 			
 
 class Bullet(arcade.Sprite):
@@ -162,7 +151,6 @@ class Game(arcade.Window):
 		self.scene.add_sprite('Player',self.player)
 		for sprite in self.scene['Enemies']:
 			sprite.physics_engine = arcade.PhysicsEnginePlatformer(sprite, self.scene['Platforms'], gravity_constant=0.5)
-			sprite.bar_list = arcade.AStarBarrierList(sprite, self.scene['Platforms'], 32, 0, 1280*10, 0, 720*10)
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
 		self.scene.add_sprite_list('Bullets')
 
@@ -191,10 +179,6 @@ class Game(arcade.Window):
 		self.camera.use()
 		self.clear()
 		self.scene.draw()
-		for enemy in self.scene['Enemies']:
-			if enemy.path:
-				arcade.draw_line_strip(enemy.path, arcade.color.BLUE, 2)
-		#self.scene.draw_hit_boxes()
 		self.superpower_txt.draw()
 
 	def on_key_press(self, key, modifiers):
