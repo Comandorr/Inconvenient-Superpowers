@@ -9,7 +9,7 @@ class Player(arcade.Sprite):
 		self.screen = screen
 		self.speed = 2
 		self.jump_speed = 7
-		self.superpower = 'earthquake'
+		self.superpower = None
 		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
 
 	def update(self):
@@ -31,12 +31,11 @@ class Player(arcade.Sprite):
 		if self.superpower == 'earthquake':
 			self.screen.camera.shake(Vec2(random.randint(-2, 2), random.randint(-10, 10)), speed=1, damping=0.95)
 			self.screen.camera.update()
-		
 
 
 class Game(arcade.Window):
 	def __init__(self):
-		super().__init__(800, 600, vsync=True)
+		super().__init__(1280, 720, vsync=True)
 		arcade.set_background_color(arcade.color.AMAZON)
 		self.player = Player(self)
 		self.player_list = arcade.SpriteList()
@@ -49,8 +48,17 @@ class Game(arcade.Window):
 			a.left = x*a.width
 			self.wall_list.append(a)
 
-		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.wall_list, gravity_constant=0.5)
+		
 		self.camera = arcade.Camera()
+		layer_options = {
+            "Platforms": {
+                "use_spatial_hash": True,
+            },
+        }
+		self.tile_map = arcade.load_tilemap('map.tmx', layer_options=layer_options)
+		self.scene = arcade.Scene.from_tilemap(self.tile_map)
+		self.scene.add_sprite('Player', self.player)
+		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
 		
 	def on_update(self, delta_time):
 		self.player.update()
@@ -62,8 +70,7 @@ class Game(arcade.Window):
 	def on_draw(self):
 		self.clear()
 		self.camera.use()
-		self.player.draw()
-		self.wall_list.draw()
+		self.scene.draw()
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W:
@@ -83,7 +90,6 @@ class Game(arcade.Window):
 			self.player.keys['d'] = False
 		if key == arcade.key.A:
 			self.player.keys['a'] = False
-		
 
 
 Game().run()
