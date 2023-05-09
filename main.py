@@ -2,10 +2,17 @@ import arcade
 import random
 from pyglet.math import Vec2
 import math
+import PIL
+from PIL import Image
+
 
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
 		super().__init__(filename, scale=1.5)
+		#self.texture_right = self.texture
+		#self.texture_left = arcade.load_texture(filename, flipped_horizontally=True)
+		#self.texture = self.texture_left
+		
 		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
 		self.screen = screen
 		self.speed = 4
@@ -43,6 +50,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.change_x = -self.speed
 			self.look = -1
 		super().update()
+		
 	
 	def use_superpower(self):
 		if self.superpower == 'teleportation':
@@ -124,7 +132,21 @@ class Game(arcade.Window):
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
 		self.player = self.scene["Hero"][0]
+		
+
+		keyframes = []
+		for i in range(len(self.player.frames)):
+			frame = self.player.frames[i]
+			img = frame.texture.image
+			img = img.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT)
+			texture = arcade.Texture('player_img_'+str(i),image = img)
+			key = arcade.AnimationKeyframe(i, 200, texture)
+			keyframes.append(key)
+		self.player.frames = keyframes
+		
+
 		self.scene.add_sprite('Player',self.player)
+		
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
 		self.bar_list = arcade.AStarBarrierList(self.scene['Enemies'][0], self.scene['Platforms'], 32, 0, 1280, 0, 720)
 
