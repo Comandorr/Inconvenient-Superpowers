@@ -15,7 +15,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		
 		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
 		self.screen = screen
-		self.speed = 4
+		self.speed = 2
 		self.jump_speed = 8
 		self.timer = 0
 		self.timer_len = 1
@@ -23,6 +23,18 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
 		self.look = 1
 		self.shoot = False
+
+	def setup(self):
+		keyframes = []
+		for i in range(len(self.frames)):
+			frame = self.frames[i]
+			img = frame.texture.image
+			img = img.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT)
+			texture = arcade.Texture('player_img_'+str(i),image = img)
+			key = arcade.AnimationKeyframe(i, 200, texture)
+			keyframes.append(key)
+		self.frames_left = keyframes
+		self.frames_right = self.frames
 
 	def update(self, delta_time = 1/60):
 		if self.superpower == 'teleportation':
@@ -33,22 +45,39 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.center_y = 150+random.randint(0, 200)
 			
 		if self.superpower == 'superspeed':
-			self.speed = 35
+			self.speed = 16
 		else:
-			self.speed = 4
+			self.speed = 2
 
 		if self.superpower == 'antigravity':
-			self.screen.physics_engine.gravity_constant = random.randint(-1, 1)/10
+			g = random.randint(-1, 1)/10
+			self.screen.physics_engine.gravity_constant = g
+			for sprite in self.screen.scene['Enemies']:
+				sprite.physics_engine.gravity_constant = g
 		else:
 			self.screen.physics_engine.gravity_constant = 0.5
+			for sprite in self.screen.scene['Enemies']:
+				sprite.physics_engine.gravity_constant = 0.5
 		
 		self.change_x = 0
 		if self.keys['d'] and not self.keys['a']:
 			self.change_x = self.speed
-			self.look = 1
+			if self.look == -1:
+				self.time_counter = self.frames[self.cur_frame_idx].duration / 1000.0
+				self.look = 1
+				self.frames = self.frames_right
+				self.set_hit_box(self.frames[0].texture.hit_box_points)
+				self.center_x+=16
 		if self.keys['a'] and not self.keys['d']:
 			self.change_x = -self.speed
-			self.look = -1
+			if self.look == 1:
+				self.time_counter = self.frames[self.cur_frame_idx].duration / 1000.0
+				self.look = -1
+				self.frames = self.frames_left
+				self.set_hit_box(self.frames[0].texture.hit_box_points)
+				self.center_x-=16
+				
+		#self.change_x = 0
 		super().update()
 		
 	
@@ -75,12 +104,11 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 
 	def update(self, delta_time = 1/60):
 		self.bar_list = self.screen.bar_list
-		self.path = arcade.astar_calculate_path([self.center_x, self.center_y], [self.screen.player.center_x, self.screen.player.center_y], self.bar_list)
+		self.path = arcade.astar_calculate_path([self.center_x, self.top], [self.screen.player.center_x, self.screen.player.top], self.bar_list)
 		self.change_x = 0
 		self.change_y = 0
+		self.chy = self.change_y
 		if self.path and len(self.path) > 2:
-
-
 			dest_x = self.path[self.pos][0]
 			dest_y = self.path[self.pos][1]
 
@@ -90,21 +118,17 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 			angle = math.atan2(y_diff, x_diff)
 
 			distance = arcade.get_distance(self.center_x, self.center_y, dest_x, dest_y)
-
 			speed = min(self.speed, distance)
-
 			self.change_x = math.cos(angle) * speed
 			self.change_y = math.sin(angle) * speed
-
-
-			distance = arcade.get_distance(self.center_x, self.center_y, dest_x, dest_y)
 
 			if distance <= self.speed:
 				self.pos += 1
 			if self.pos >= len(self.path):
 				self.pos = 0
-					
-		super().update()
+			#self.change_y = self.chy
+			
+		
 
 
 class Bullet(arcade.Sprite):
@@ -132,21 +156,12 @@ class Game(arcade.Window):
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
 		self.player = self.scene["Hero"][0]
-		
-
-		keyframes = []
-		for i in range(len(self.player.frames)):
-			frame = self.player.frames[i]
-			img = frame.texture.image
-			img = img.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT)
-			texture = arcade.Texture('player_img_'+str(i),image = img)
-			key = arcade.AnimationKeyframe(i, 200, texture)
-			keyframes.append(key)
-		self.player.frames = keyframes
+		self.player.setup()
 		
 
 		self.scene.add_sprite('Player',self.player)
-		
+		for sprite in self.scene['Enemies']:
+			sprite.physics_engine = arcade.PhysicsEnginePlatformer(sprite, self.scene['Platforms'], gravity_constant=0.5)
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
 		self.bar_list = arcade.AStarBarrierList(self.scene['Enemies'][0], self.scene['Platforms'], 32, 0, 1280, 0, 720)
 
@@ -155,8 +170,9 @@ class Game(arcade.Window):
 
 	def on_update(self, delta_time):
 		self.player.update_animation()
-		#self.player.update()
 		self.scene.update()
+		for sprite in self.scene['Enemies']:
+			sprite.physics_engine.update()
 		self.physics_engine.update()
 		position = Vec2(self.player.center_x - self.width / 2, 0)
 		self.camera.move_to(position, 0.05)
@@ -170,6 +186,7 @@ class Game(arcade.Window):
 		self.scene.draw()
 		if self.scene['Enemies'][0].path:
 			arcade.draw_line_strip(self.scene['Enemies'][0].path, arcade.color.BLUE, 2)
+		#self.scene.draw_hit_boxes()
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W:
