@@ -4,7 +4,7 @@ from pyglet.math import Vec2
 
 class Player(arcade.Sprite):
 	def __init__(self, screen):
-		super().__init__('character.png', center_x = screen.width/2, center_y = 50)
+		super().__init__('character.png', scale=2, center_x = screen.width/2, center_y = 50)
 		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
 		self.screen = screen
 		self.speed = 2
@@ -36,26 +36,19 @@ class Player(arcade.Sprite):
 class Game(arcade.Window):
 	def __init__(self):
 		super().__init__(1280, 720, vsync=True)
-		arcade.set_background_color(arcade.color.AMAZON)
+		arcade.set_background_color((86, 101, 115))
 		self.player = Player(self)
 		self.player_list = arcade.SpriteList()
 		self.player_list.append(self.player)
 
-		self.wall_list = arcade.SpriteList()
-		for x in range(50):
-			a = arcade.Sprite('tile_1.png')
-			a.bottom = 0
-			a.left = x*a.width
-			self.wall_list.append(a)
 
 		
 		self.camera = arcade.Camera()
-		layer_options = {
-            "Platforms": {
-                "use_spatial_hash": True,
-            },
+		lp = {
+            "Platforms": {"use_spatial_hash": True},
         }
-		self.tile_map = arcade.load_tilemap('map.tmx', layer_options=layer_options)
+		self.tile_map = None
+		self.tile_map = arcade.load_tilemap('map.tmx', 3, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
 		self.scene.add_sprite('Player', self.player)
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
@@ -68,8 +61,8 @@ class Game(arcade.Window):
 
 
 	def on_draw(self):
-		self.clear()
 		self.camera.use()
+		self.clear()
 		self.scene.draw()
 
 	def on_key_press(self, key, modifiers):
