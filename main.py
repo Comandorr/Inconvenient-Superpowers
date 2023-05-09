@@ -9,10 +9,6 @@ from PIL import Image
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
 		super().__init__(filename, scale=1.5)
-		#self.texture_right = self.texture
-		#self.texture_left = arcade.load_texture(filename, flipped_horizontally=True)
-		#self.texture = self.texture_left
-		
 		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
 		self.screen = screen
 		self.speed = 2
@@ -78,8 +74,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.center_x-=16
 				
 		#self.change_x = 0
-		super().update()
-		
+		super().update()	
 	
 	def use_superpower(self):
 		if self.superpower == 'teleportation':
@@ -87,9 +82,10 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.bottom = random.randint(0, self.screen.height-self.height)
 
 	def get_superpower(self):
+		if self.superpower in self.superlist:
+			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		if self.superpower == 'teleportation':
-			self.timer_len = 1
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
 
 
 class Enemy(arcade.AnimatedTimeBasedSprite):
@@ -100,14 +96,14 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		self.screen = screen
 		self.speed = 2
 		self.pos = 0
-		
+		self.hp = 3		
 
 	def update(self, delta_time = 1/60):
-		self.bar_list = self.screen.bar_list
-		self.path = arcade.astar_calculate_path([self.center_x, self.top], [self.screen.player.center_x, self.screen.player.top], self.bar_list)
+		if self. hp <= 0:
+			self.kill()
+		self.path = arcade.astar_calculate_path([self.center_x, self.center_y], [self.screen.player.center_x, self.screen.player.center_y], self.bar_list)
 		self.change_x = 0
 		self.change_y = 0
-		self.chy = self.change_y
 		if self.path and len(self.path) > 2:
 			dest_x = self.path[self.pos][0]
 			dest_y = self.path[self.pos][1]
@@ -126,18 +122,24 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 				self.pos += 1
 			if self.pos >= len(self.path):
 				self.pos = 0
-			#self.change_y = self.chy
 			
-		
-
 
 class Bullet(arcade.Sprite):
-	def __init__(self, x, y, speed):
+	def __init__(self, x, y, speed, scene):
 		if speed > 0:
 			super().__init__(":resources:images/space_shooter/laserBlue01.png", center_x=x, center_y=y)
 		else:
 			super().__init__(":resources:images/space_shooter/laserBlue01.png", center_x=x, center_y=y, flipped_horizontally=True)
 		self.change_x = speed
+		self.scene = scene
+
+	def update(self):
+		if arcade.check_for_collision_with_list(self, self.scene['Platforms']):
+			self.kill()
+		for enemy in arcade.check_for_collision_with_list(self, self.scene['Enemies']):
+			self.kill()
+			enemy.hp -= 1
+		super().update()
 
 
 class Game(arcade.Window):
@@ -152,21 +154,24 @@ class Game(arcade.Window):
 			"Hero":{"custom_class": Player, "custom_class_args": {"screen": self}},
 			"Enemies":{"custom_class": Enemy, "custom_class_args": {"screen": self}},
 		}
-		self.tile_map = None
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
 		self.player = self.scene["Hero"][0]
 		self.player.setup()
 		
-
 		self.scene.add_sprite('Player',self.player)
 		for sprite in self.scene['Enemies']:
 			sprite.physics_engine = arcade.PhysicsEnginePlatformer(sprite, self.scene['Platforms'], gravity_constant=0.5)
+			sprite.bar_list = arcade.AStarBarrierList(sprite, self.scene['Platforms'], 32, 0, 1280*10, 0, 720*10)
 		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
-		self.bar_list = arcade.AStarBarrierList(self.scene['Enemies'][0], self.scene['Platforms'], 32, 0, 1280, 0, 720)
-
-		self.bullet_list = arcade.SpriteList()
 		self.scene.add_sprite_list('Bullets')
+
+		self.superpower_txt = arcade.Text(
+			self.player.superpower,
+			self.camera.position[0]+self.width/2,
+			self.height-100,
+			font_size=30,
+			bold = True)
 
 	def on_update(self, delta_time):
 		self.player.update_animation()
@@ -179,14 +184,18 @@ class Game(arcade.Window):
 		if self.player.superpower == 'earthquake':
 			self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
 			self.camera.update()
+		self.superpower_txt.text = self.player.superpower
+		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
 	def on_draw(self):
 		self.camera.use()
 		self.clear()
 		self.scene.draw()
-		if self.scene['Enemies'][0].path:
-			arcade.draw_line_strip(self.scene['Enemies'][0].path, arcade.color.BLUE, 2)
+		for enemy in self.scene['Enemies']:
+			if enemy.path:
+				arcade.draw_line_strip(enemy.path, arcade.color.BLUE, 2)
 		#self.scene.draw_hit_boxes()
+		self.superpower_txt.draw()
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W:
@@ -201,7 +210,7 @@ class Game(arcade.Window):
 		if key == arcade.key.E:
 			self.player.get_superpower()
 		if key == arcade.key.SPACE:
-			b = Bullet(self.player.center_x, self.player.center_y, 50*self.player.look)
+			b = Bullet(self.player.center_x, self.player.center_y, 50*self.player.look, self.scene)
 			self.scene['Bullets'].append(b)
 		
 	def on_key_release(self, key, modifiers):
