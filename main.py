@@ -7,8 +7,6 @@ from PIL import Image
 # import os
 # pyinstaller --onefile --noconsole --clean main.py
 
-# БАГ : если после small выпадает big, игрока уносит за карту
-# Надо проверять, может ли он стать большим
 
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
@@ -19,7 +17,6 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.timer = 0
 
 		self.superpower = 'none'
-		#self.prev_superpower = 'none'
 		self.timer_superpower = 0
 
 		self.look = 'right'
@@ -100,12 +97,11 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.change_animation('idle', self.look)
 
 	def get_superpower(self):
-		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray', 'explosion']
-		#self.prev_superpower = self.superpower
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray', 'explosion', 'freeze']
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		self.superpower = 'small'
+		self.superpower = 'freeze'
 
 		# размер
 		if self.superpower == 'big':
@@ -157,10 +153,10 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		self.timer_shoot = 0
 
 	def update(self, delta_time = 1/60):
+		self.timer_shoot += delta_time
+
 		if self. hp <= 0:
 			self.kill()
-
-		self.timer_shoot += delta_time
 
 		self.change_x = 0
 		distance = arcade.get_distance_between_sprites(self, self.screen.player)
@@ -172,13 +168,12 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 			if self.screen.player.center_x < self.center_x:
 				self.change_x = -min(self.speed, distance)
 		pos3 = (self.screen.player.center_x, self.center_y)
-		if arcade.get_distance(pos1[0], pos1[1], pos3[0], pos3[1]) > 0:
-			if arcade.has_line_of_sight(pos1, pos3, self.screen.scene['Platforms']) and self.timer_shoot >= 1:
-				self.timer_shoot = 0
-				if pos3[0] > pos1[0]:
-					self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
-				else:
-					self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
+		if 500 > distance > 0 and self.timer_shoot >= 1:
+			self.timer_shoot = 0
+			if pos3[0] > pos1[0]:
+				self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
+			else:
+				self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
 
 
 class Bullet(arcade.Sprite):
@@ -279,18 +274,19 @@ class Game(arcade.Window):
 			self.explosion_frames.append(keyframe)
 
 	def on_update(self, delta_time):
-		self.scene.update()
-		self.player.update_animation()
-		for exp in self.scene['Explosions']:
-			exp.update_animation()
-		for sprite in self.scene['Enemies']:
-			sprite.physics_engine.update()
-		self.physics_engine.update()
-		position = Vec2(self.player.center_x - self.width / 2, 0)
-		self.camera.move_to(position, 0.05)
-		if self.player.superpower == 'earthquake':
-			self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
-			self.camera.update()
+		if self.player and self.player.superpower != 'freeze':
+			self.scene.update()
+			self.player.update_animation()
+			for exp in self.scene['Explosions']:
+				exp.update_animation()
+			for sprite in self.scene['Enemies']:
+				sprite.physics_engine.update()
+			self.physics_engine.update()
+			position = Vec2(self.player.center_x - self.width / 2, 0)
+			self.camera.move_to(position, 0.05)
+			if self.player.superpower == 'earthquake':
+				self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
+				self.camera.update()
 		self.superpower_txt.text = self.player.superpower
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
