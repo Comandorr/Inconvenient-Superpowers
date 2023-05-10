@@ -98,14 +98,19 @@ class Player(arcade.AnimatedTimeBasedSprite):
 	def get_superpower(self):
 		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray']
 		self.prev_superpower = self.superpower
-		if self.superpower == 'small':
-			self.center_y += 100
+		
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
+		if self.superpower == 'small':
+			self.center_y += 100
 		if self.superpower == 'big':
-			self.scale = 7
-			self.collision_radius =130
+			self.center_y += 100
+			self.scale = 5.5
+			self.collision_radius =150
+			for sp in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
+				sp.kill()
+			self.collision_radius =100
 		elif self.superpower == 'small':
 			self.scale = 0.1
 		else:
@@ -119,6 +124,12 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				sprite.visible = True
 		
 	def change_animation(self, animation, look):
+		if self.animation != animation and self.superpower == 'big':
+			self.collision_radius =125
+			self.center_y += 20
+			for sp in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
+				sp.kill()
+			self.collision_radius =100
 		self.animation, self.look = animation, look
 		self.frames = self.animations[self.animation][self.look]
 		self.cur_frame_idx = len(self.frames)-1
@@ -134,7 +145,7 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		self.screen = screen
 		self.speed = 2
 		self.pos = 0
-		self.hp = 3		
+		self.hp = 10		
 
 	def update(self, delta_time = 1/60):
 		if self. hp <= 0:
@@ -236,5 +247,6 @@ class Game(arcade.Window):
 	def on_key_release(self, key, modifiers):
 		if key in self.player.keys:
 			self.player.keys[key] = False
+
 
 Game().run()
