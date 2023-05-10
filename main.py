@@ -16,8 +16,9 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.speed = 4
 		self.timer = 0
 
-		self.superpower = 'none'
+		self.superpower = '-'
 		self.timer_superpower = 0
+		self.timer_change = 0
 
 		self.look = 'right'
 		self.shoot = False
@@ -54,6 +55,14 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		}
 
 	def update(self, delta_time = 1/60):
+		self.timer_change += delta_time
+		if self.timer_change >= 5:
+			self.timer_change = 0
+			if self.superpower == '-':
+				self.get_superpower()
+			else:
+				self.remove_superpower()
+
 		# телепортация
 		if self.superpower == 'teleportation':
 			self.timer += delta_time
@@ -62,21 +71,13 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.center_x += random.randint(-500, 500)
 				self.center_y = 150+random.randint(0, 200)
 
-		# суперскорость
-		self.speed = 4			
-		if self.superpower == 'superspeed':
-			self.speed = 16
-
 		# антигравитация
 		if self.superpower == 'antigravity':
 			g = random.randint(-1, 1)/10
 			self.screen.physics_engine.gravity_constant = g
 			for sprite in self.screen.scene['Enemies']:
 				sprite.physics_engine.gravity_constant = g
-		else:
-			self.screen.physics_engine.gravity_constant = 0.5
-			for sprite in self.screen.scene['Enemies']:
-				sprite.physics_engine.gravity_constant = 0.5
+
 		# движение
 		self.change_x = 0
 		if self.keys[arcade.key.D] and not self.keys[arcade.key.A]:
@@ -97,11 +98,16 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.change_animation('idle', self.look)
 
 	def get_superpower(self):
-		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray', 'explosion', 'freeze']
+		self.remove_superpower()
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray', 'explosion', 'freeze', 'sound']
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		self.superpower = 'freeze'
+		# self.superpower = 'sound'
+
+		# суперскорость		
+		if self.superpower == 'superspeed':
+			self.speed = 16
 
 		# размер
 		if self.superpower == 'big':
@@ -114,18 +120,24 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		elif self.superpower == 'small':
 			self.scale = 0.1
 			self.center_y += 100
-		else:
-			self.scale = 1.5
 		
 		# рентген
 		if self.superpower == 'x-ray':
 			for sprite in self.screen.scene['Platforms']:
 				sprite.visible = False
-		else:
-			for sprite in self.screen.scene['Platforms']:
-				sprite.visible = True
 
 		self.change_animation(self.animation, self.look)
+
+	def remove_superpower(self):
+		for sprite in self.screen.scene['Platforms']:
+			sprite.visible = True
+		self.scale = 1.5
+		self.speed = 4	
+		self.screen.physics_engine.gravity_constant = 0.5
+		for sprite in self.screen.scene['Enemies']:
+			sprite.physics_engine.gravity_constant = 0.5
+		self.superpower = '-'
+
 
 	def change_animation(self, animation, look):
 		if self.animation != animation and self.superpower == 'big':
@@ -186,6 +198,10 @@ class Bullet(arcade.Sprite):
 			self.right = x
 		self.change_x = speed
 		self.screen = screen
+		if self.screen.player.superpower == 'sound':
+			arcade.play_sound(self.screen.shoot_sound, 500)
+		else:
+			arcade.play_sound(self.screen.shoot_sound, 1)
 
 	def update(self):
 		for wall in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
@@ -220,6 +236,10 @@ class Explosion(arcade.AnimatedTimeBasedSprite):
 		self.screen.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
 		self.screen.camera.update()
 		self.scale = 3.5
+		if self.screen.player.superpower == 'sound':
+			arcade.play_sound(bullet.screen.explosion_sound, 500)
+		else:
+			arcade.play_sound(bullet.screen.explosion_sound, 1)
 
 	def update(self):
 		for wall in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
@@ -239,6 +259,7 @@ class Explosion(arcade.AnimatedTimeBasedSprite):
 class Game(arcade.Window):
 	def __init__(self):
 		super().__init__(1280, 720, vsync=True)
+		self.center_window()
 		self.set_mouse_visible(False)
 		arcade.set_background_color((40, 44, 56))
 
@@ -273,7 +294,11 @@ class Game(arcade.Window):
 			keyframe = arcade.AnimationKeyframe(10+id, 50, texture)
 			self.explosion_frames.append(keyframe)
 
+		self.shoot_sound = arcade.load_sound('sounds/shoot.ogg')
+		self.explosion_sound = arcade.load_sound('sounds/explosion.ogg')
+
 	def on_update(self, delta_time):
+		self.camera.use()
 		if self.player and self.player.superpower != 'freeze':
 			self.scene.update()
 			self.player.update_animation()
@@ -287,11 +312,12 @@ class Game(arcade.Window):
 			if self.player.superpower == 'earthquake':
 				self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
 				self.camera.update()
+		else:
+			self.player.update()
 		self.superpower_txt.text = self.player.superpower
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
 	def on_draw(self):
-		self.camera.use()
 		self.clear()
 		self.scene.draw()
 		#self.scene.draw_hit_boxes()
