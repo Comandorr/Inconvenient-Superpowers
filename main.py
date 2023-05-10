@@ -4,33 +4,52 @@ from pyglet.math import Vec2
 import math
 import PIL
 from PIL import Image
+# import os
 
 
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
 		super().__init__(filename, scale=1.5)
-		self.keys = {'w':False, 's':False, 'a':False, 'd':False}
+		self.keys = {'a':False, 'd':False}
 		self.screen = screen
-		self.speed = 2
+		self.speed = 4
 		self.jump_speed = 8
 		self.timer = 0
 		self.timer_len = 1
 		self.superpower = 'none'
 		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
-		self.look = 1
+		self.look = 'right'
 		self.shoot = False
+		self.animation = 'idle'
 
 	def setup(self):
-		keyframes = []
+		frames_left = []
 		for i in range(len(self.frames)):
 			frame = self.frames[i]
-			img = frame.texture.image
-			img = img.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT)
+			img = frame.texture.image.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT).convert('RGBA')
 			texture = arcade.Texture('player_img_'+str(i),image = img)
-			key = arcade.AnimationKeyframe(i, 200, texture)
-			keyframes.append(key)
-		self.frames_left = keyframes
-		self.frames_right = self.frames
+			frames_left.append(arcade.AnimationKeyframe(i+4, 200, texture))
+		frames_right = self.frames
+
+		frames_run_right = []
+		frames_run_left = []
+		id = 8
+		for i in range(10):
+			frame = 'character_run/tile00'+str(i)+'.png'
+			texture = arcade.Texture(frame+str(id), PIL.Image.open(frame).convert('RGBA'))
+			keyframe = arcade.AnimationKeyframe(id, 100, texture)
+			id+=1
+			texture2 = arcade.Texture(frame+str(id), PIL.Image.open(frame).transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT).convert('RGBA'))
+			keyframe2 = arcade.AnimationKeyframe(id, 100, texture2)
+			id+=1
+			frames_run_right.append(keyframe)
+			frames_run_left.append(keyframe2)
+
+
+		self.animations = {
+			'idle': {'left':frames_left, 	 'right':frames_right},
+			'run' : {'left':frames_run_left, 'right':frames_run_right},
+		}
 
 	def update(self, delta_time = 1/60):
 		if self.superpower == 'teleportation':
@@ -43,7 +62,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower == 'superspeed':
 			self.speed = 16
 		else:
-			self.speed = 2
+			self.speed = 4
 
 		if self.superpower == 'antigravity':
 			g = random.randint(-1, 1)/10
@@ -54,28 +73,27 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.screen.physics_engine.gravity_constant = 0.5
 			for sprite in self.screen.scene['Enemies']:
 				sprite.physics_engine.gravity_constant = 0.5
-		
+
 		self.change_x = 0
 		if self.keys['d'] and not self.keys['a']:
 			self.change_x = self.speed
-			if self.look == -1:
-				self.time_counter = self.frames[self.cur_frame_idx].duration / 1000.0
-				self.look = 1
-				self.frames = self.frames_right
-				self.set_hit_box(self.frames[0].texture.hit_box_points)
-				self.center_x+=16
-		if self.keys['a'] and not self.keys['d']:
+			if self.look != 'right':
+				self.look = 'right'
+				self.change_animation()
+		elif self.keys['a'] and not self.keys['d']:
 			self.change_x = -self.speed
-			if self.look == 1:
-				self.time_counter = self.frames[self.cur_frame_idx].duration / 1000.0
-				self.look = -1
-				self.frames = self.frames_left
-				self.set_hit_box(self.frames[0].texture.hit_box_points)
-				self.center_x-=16
-				
-		#self.change_x = 0
-		super().update()	
-	
+			if self.look != 'left':
+				self.look = 'left'
+				self.change_animation()
+		if self.change_x != 0:
+			if self.animation != 'run':
+				self.animation = 'run'
+				self.change_animation()
+		else:
+			if self.animation != 'idle':
+				self.animation = 'idle'
+				self.change_animation()
+
 	def use_superpower(self):
 		if self.superpower == 'teleportation':
 			self.left = random.randint(int(self.screen.camera.position[0]), int(self.screen.camera.position[0]+self.screen.width-self.width))
@@ -86,6 +104,12 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
 		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
+
+	def change_animation(self):
+		self.frames = self.animations[self.animation][self.look]
+		self.cur_frame_idx = len(self.frames)-1
+		self.time_counter = self.frames[self.cur_frame_idx].duration / 1000.0
+		self.set_hit_box(self.frames[-2].texture.hit_box_points)
 
 
 class Enemy(arcade.AnimatedTimeBasedSprite):
@@ -162,8 +186,8 @@ class Game(arcade.Window):
 			bold = True)
 
 	def on_update(self, delta_time):
-		self.player.update_animation()
 		self.scene.update()
+		self.player.update_animation()
 		for sprite in self.scene['Enemies']:
 			sprite.physics_engine.update()
 		self.physics_engine.update()
@@ -172,13 +196,16 @@ class Game(arcade.Window):
 		if self.player.superpower == 'earthquake':
 			self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
 			self.camera.update()
-		self.superpower_txt.text = self.player.superpower
+		#self.superpower_txt.text = self.player.superpower
+		#self.superpower_txt.text = self.player.animation + ' ' + self.player.look
+		self.superpower_txt.text = self.player.center_y
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
 	def on_draw(self):
 		self.camera.use()
 		self.clear()
 		self.scene.draw()
+		#self.scene.draw_hit_boxes()
 		self.superpower_txt.draw()
 
 	def on_key_press(self, key, modifiers):
@@ -194,16 +221,16 @@ class Game(arcade.Window):
 		if key == arcade.key.E:
 			self.player.get_superpower()
 		if key == arcade.key.SPACE:
-			b = Bullet(self.player.center_x, self.player.center_y, 50*self.player.look, self.scene)
+			if self.player.look == 'right':
+				b = Bullet(self.player.center_x, self.player.center_y, 50, self.scene)
+			else:
+				b = Bullet(self.player.center_x, self.player.center_y, -50, self.scene)
 			self.scene['Bullets'].append(b)
 		
 	def on_key_release(self, key, modifiers):
-		if key == arcade.key.W:
-			self.player.keys['w'] = False
 		if key == arcade.key.D:
 			self.player.keys['d'] = False
 		if key == arcade.key.A:
 			self.player.keys['a'] = False
-
 
 Game().run()
