@@ -116,7 +116,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower == 'big':
 			self.center_y += 100
 			self.scale = 5.5
-			self.collision_radius =140
+			self.collision_radius =150
 			for sp in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
 				sp.kill()
 			self.collision_radius =100
@@ -145,7 +145,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower in ['big', 'small']:
 			self.center_y += 100
 		if self.screen.mediaplayer:
-			self.screen.mediaplayer.stop()
+			arcade.stop_sound(self.screen.mediaplayer)
 		self.superpower = '-'
 
 	def change_animation(self, animation, look):
@@ -300,6 +300,9 @@ class Game(arcade.Window):
 			multiline=True,
 			align = 'center',
 			anchor_x = 'center')
+
+		self.hp_bar = arcade.Texture.create_filled('hpbar', (200, 20), (192, 57, 43))
+
 		self.explosion_frames = []
 		for id in range(1,10):
 			frame = 'effects/explosion-animation'+str(id)+'.png'
@@ -347,11 +350,15 @@ class Game(arcade.Window):
 		self.superpower_txt.text = self.descriptions[self.player.superpower]
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
+
 	def on_draw(self):
 		self.clear()
 		self.scene.draw()
 		#self.scene.draw_hit_boxes()
 		self.superpower_txt.draw()
+		self.hp_bar.draw_sized(
+			self.camera.position[0]+self.width/2, 20, 
+			self.player.hp*4, 10)
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W and self.physics_engine.can_jump():
