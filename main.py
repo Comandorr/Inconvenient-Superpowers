@@ -13,11 +13,10 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.keys = {'a':False, 'd':False}
 		self.screen = screen
 		self.speed = 4
-		self.jump_speed = 8
 		self.timer = 0
 		self.timer_len = 1
 		self.superpower = 'none'
-		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray']
 		self.look = 'right'
 		self.shoot = False
 		self.animation = 'idle'
@@ -93,6 +92,8 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			if self.animation != 'idle':
 				self.animation = 'idle'
 				self.change_animation()
+		#self.texture.draw = self.texture.draw_scaled(self.center_x, self.center_y, scale=5)
+
 
 	def use_superpower(self):
 		if self.superpower == 'teleportation':
@@ -103,7 +104,23 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake']
+		if self.superpower == 'big':
+			self.scale = 7
+			self.collision_radius =150
+			self.change_animation()
+		elif self.superpower == 'small':
+			self.scale = 0.1
+			self.change_animation()
+		else:
+			self.scale = 1.5
+			self.change_animation()
+		if self.superpower == 'x-ray':
+			for sprite in self.screen.scene['Platforms']:
+				sprite.visible = False
+		else:
+			for sprite in self.screen.scene['Platforms']:
+				sprite.visible = True
+		self.superlist = ['superspeed', 'antigravity', 'teleportation', 'earthquake', 'big', 'small', 'x-ray']
 
 	def change_animation(self):
 		self.frames = self.animations[self.animation][self.look]
@@ -196,9 +213,7 @@ class Game(arcade.Window):
 		if self.player.superpower == 'earthquake':
 			self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
 			self.camera.update()
-		#self.superpower_txt.text = self.player.superpower
-		#self.superpower_txt.text = self.player.animation + ' ' + self.player.look
-		self.superpower_txt.text = self.player.center_y
+		self.superpower_txt.text = self.player.superpower
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 
 	def on_draw(self):
@@ -211,7 +226,7 @@ class Game(arcade.Window):
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W:
 			if self.physics_engine.can_jump():
-				self.player.change_y = self.player.jump_speed
+				self.physics_engine.jump(8)
 		if key == arcade.key.D:
 			self.player.keys['d'] = True
 		if key == arcade.key.A:
