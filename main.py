@@ -237,9 +237,9 @@ class Game(arcade.Window):
 			self.player.get_superpower()
 		if key == arcade.key.SPACE:
 			if self.player.look == 'right':
-				b = Bullet(self.player.center_x, self.player.center_y, 50, self.scene)
+				b = Bullet(self.player.center_x, self.player.center_y, 40, self.scene)
 			else:
-				b = Bullet(self.player.center_x, self.player.center_y, -50, self.scene)
+				b = Bullet(self.player.center_x, self.player.center_y, -40, self.scene)
 			self.scene['Bullets'].append(b)
 		
 	def on_key_release(self, key, modifiers):
