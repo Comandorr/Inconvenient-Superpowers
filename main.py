@@ -55,7 +55,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		}
 
 	def update(self, delta_time = 1/60):
-		self.timer_change += delta_time
+		#self.timer_change += delta_time
 		if self.timer_change >= 7:
 			self.timer_change = 0
 			if self.superpower == '-':
@@ -106,7 +106,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		# self.superpower = 'superspeed'
+		self.superpower = 'superspeed'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -174,27 +174,29 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		self.timer_shoot = 0
 
 	def update(self, delta_time = 1/60):
+		self.physics_engine.update()
 		self.timer_shoot += delta_time
 
 		if self. hp <= 0:
 			self.kill()
 
-		self.change_x = 0
 		distance = arcade.get_distance_between_sprites(self, self.screen.player)
+		self.change_x = 0
 		pos1 = (self.center_x, self.center_y)
 		pos2 = (self.screen.player.center_x, self.screen.player.center_y)
-		if 50 < distance < 500 and arcade.has_line_of_sight(pos1, pos2, self.screen.scene['Platforms']):
-			if self.screen.player.center_x > self.center_x:
-				self.change_x = min(self.speed, distance)
-			if self.screen.player.center_x < self.center_x:
-				self.change_x = -min(self.speed, distance)
-		pos3 = (self.screen.player.center_x, self.center_y)
-		if 500 > distance > 0 and self.timer_shoot >= 1:
-			self.timer_shoot = 0
-			if pos3[0] > pos1[0]:
-				self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
-			else:
-				self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
+		if distance < 500:
+			if distance > 0 and arcade.has_line_of_sight(pos1, pos2, self.screen.scene['Platforms'], 500, 31) and self.timer_shoot >= 1:
+				pos3 = (self.screen.player.center_x, self.center_y)
+				self.timer_shoot = 0
+				if pos3[0] > pos1[0]:
+					self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
+				else:
+					self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
+			if distance > 50:
+				if self.screen.player.center_x > self.center_x:
+					self.change_x = min(self.speed, distance)
+				if self.screen.player.center_x < self.center_x:
+					self.change_x = -min(self.speed, distance)
 
 
 class Bullet(arcade.Sprite):
@@ -267,16 +269,17 @@ class Explosion(arcade.AnimatedTimeBasedSprite):
 
 class Game(arcade.Window):
 	def __init__(self):
-		super().__init__(1280, 720, vsync=True)
+		super().__init__(1280, 720, vsync=False)
 		self.center_window()
 		self.set_mouse_visible(False)
 		arcade.set_background_color((40, 44, 56))
+		arcade.enable_timings()
 
 		self.camera = arcade.Camera()
 		lp = {
-			"Platforms": {"use_spatial_hash": True},
+			"Platforms": {"use_spatial_hash": True, 'spatial_hash_cell_size' : 8},
 			"Hero":{"custom_class": Player, "custom_class_args": {"screen": self}},
-			"Enemies":{"custom_class": Enemy, "custom_class_args": {"screen": self}},
+			"Enemies":{'hit_box_algorithm' : None, "custom_class": Enemy, "custom_class_args": {"screen": self}},
 		}
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
@@ -285,8 +288,8 @@ class Game(arcade.Window):
 		
 		self.scene.add_sprite('Player',self.player)
 		for sprite in self.scene['Enemies']:
-			sprite.physics_engine = arcade.PhysicsEnginePlatformer(sprite, self.scene['Platforms'], gravity_constant=0.5)
-		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.scene['Platforms'], gravity_constant=0.5)
+			sprite.physics_engine = arcade.PhysicsEnginePlatformer(sprite, walls = self.scene['Platforms'], gravity_constant=0.5)
+		self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, walls = self.scene['Platforms'], gravity_constant=0.5)
 		self.scene.add_sprite_list('Bullets')
 		self.scene.add_sprite_list('Explosions')
 
@@ -334,8 +337,6 @@ class Game(arcade.Window):
 		self.camera.use()
 		if self.player and self.player.superpower != 'freeze':
 			self.physics_engine.update()
-			for sprite in self.scene['Enemies']:
-				sprite.physics_engine.update()
 			self.scene.update()
 			self.player.update_animation()
 			for exp in self.scene['Explosions']:
@@ -347,7 +348,8 @@ class Game(arcade.Window):
 				self.camera.update()
 		else:
 			self.player.update()
-		self.superpower_txt.text = self.descriptions[self.player.superpower]
+		#self.superpower_txt.text = self.descriptions[self.player.superpower]
+		self.superpower_txt.text = int(arcade.get_fps())
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 		self.superpower_txt.y = self.camera.position[1]+self.height-100
 
@@ -368,6 +370,8 @@ class Game(arcade.Window):
 			self.player.keys[key] = True
 		elif key == arcade.key.E:
 			self.player.get_superpower()
+		elif key == arcade.key.F:
+			self.player.remove_superpower()
 		elif key == arcade.key.SPACE and self.player.superpower != 'freeze':
 			if self.player.look == 'right':
 				self.scene['Bullets'].append(Bullet(self.player.right+1, self.player.center_y, 40, self))
