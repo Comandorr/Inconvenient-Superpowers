@@ -61,6 +61,10 @@ class Player(arcade.AnimatedTimeBasedSprite):
 				self.get_superpower()
 			else:
 				self.remove_superpower()
+			
+		if arcade.check_for_collision_with_list(self, self.screen.scene['Finish']):
+			self.kill()
+			self.screen.win = True
 
 		if self.hp <= 0 or self.center_y < 0:
 			self.kill()
@@ -114,7 +118,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if not self.superlist:
 			self.superlist, self.used_superlist = self.used_superlist, self.superlist
 		self.superpower = random.choice(self.superlist)
-		#self.superpower = 'teleportation'
+		#self.superpower = 'antigravity'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -157,7 +161,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.screen.physics_engine.gravity_constant = 0.5
 		for sprite in self.screen.scene['Enemies']:
 			sprite.physics_engine.gravity_constant = 0.5
-		if self.superpower in ['big', 'small']:
+		if self.superpower in ['big']:
 			self.center_y += 100
 		if self.screen.mediaplayer:
 			arcade.stop_sound(self.screen.mediaplayer)
@@ -186,6 +190,18 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		for i in ['flipped_horizontally', 'flipped_vertically', 'flipped_diagonally', 'hit_box_algorithm', 'hit_box_detail']:
 			del kwargs[i]
 		super().__init__(filename, **kwargs)
+		
+		#print(filename, kwargs['image_x'], kwargs['image_y'], kwargs['image_width'], kwargs['image_height'])\
+		self.texture_left = arcade.load_texture(
+			filename, 
+			kwargs['image_x'], kwargs['image_y'], 
+			kwargs['image_width'], kwargs['image_height'])			
+		self.texture_right = arcade.load_texture(
+			filename, 
+			kwargs['image_x'], kwargs['image_y'], 
+			kwargs['image_width'], kwargs['image_height'], 
+			mirrored = True)
+		
 		self.screen = screen
 		self.speed = 2
 		self.pos = 0
@@ -215,8 +231,10 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 				if distance > 100:
 					if self.screen.player.center_x > self.center_x:
 						self.change_x = min(self.speed, distance)
+						self.texture = self.texture_right
 					if self.screen.player.center_x < self.center_x:
 						self.change_x = -min(self.speed, distance)
+						self.texture = self.texture_left
 
 
 class Bullet(arcade.Sprite):
@@ -251,10 +269,10 @@ class Bullet(arcade.Sprite):
 			if self.screen.player and self.screen.player.superpower == 'explosion':
 				enemy.kill()
 				Explosion(self)
-		for player in arcade.check_for_collision_with_list(self, self.screen.scene['Player']):
+		if arcade.check_for_collision_with_list(self, self.screen.scene['Player']):
 			self.kill()
-			player.hp -= 1
-			if self.screen.scene['Player'][0].superpower == 'explosion':
+			self.screen.player.hp -= 1
+			if self.screen.player == 'explosion':
 				Explosion(self)
 		super().update()
 
@@ -292,17 +310,18 @@ class Explosion(arcade.AnimatedTimeBasedSprite):
 
 class Game(arcade.Window):
 	def __init__(self):
-		super().__init__(1280, 720, vsync=False)
+		super().__init__(1280, 720, vsync=False, title='Inconvenient Superpowers')
 		self.center_window()
 		self.set_mouse_visible(False)
 		arcade.set_background_color((40, 44, 65))
 		arcade.enable_timings()
-
+		
 		self.camera = arcade.Camera()
 		lp = {
 			"Platforms": {"use_spatial_hash": True, 'spatial_hash_cell_size' : 8},
 			"Hero":{"custom_class": Player, "custom_class_args": {"screen": self}},
 			"Enemies":{'hit_box_algorithm' : None, "custom_class": Enemy, "custom_class_args": {"screen": self}},
+			"Finish":{"use_spatial_hash": True},
 		}
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
@@ -327,6 +346,7 @@ class Game(arcade.Window):
 			anchor_x = 'center')
 
 		self.hp_bar = arcade.Texture.create_filled('hpbar', (200, 20), (192, 57, 43))
+		self.win = False
 
 		self.explosion_frames = []
 		for id in range(1,10):
@@ -376,7 +396,10 @@ class Game(arcade.Window):
 		self.superpower_txt.text = self.descriptions[self.player.superpower]
 		#self.superpower_txt.text = int(arcade.get_fps())
 		if not self.scene['Player']:
-			self.superpower_txt.text = 'Ты умер'
+			if self.win:
+				self.superpower_txt.text = 'Ты прошел игру!'
+			else:
+				self.superpower_txt.text = 'Ты умер'
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 		self.superpower_txt.y = self.camera.position[1]+self.height-100
 
