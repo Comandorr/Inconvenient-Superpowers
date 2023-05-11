@@ -75,8 +75,8 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.timer += delta_time
 			if self.timer >= 0.5:
 				self.timer = 0
-				self.center_x += random.randint(-500, 500)
-				self.center_y = 150+random.randint(0, 200)
+				self.center_x += random.randint(-400, 400)
+				self.center_y +=random.randint(-50, 100)
 
 		# антигравитация
 		if self.superpower == 'antigravity':
@@ -114,7 +114,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if not self.superlist:
 			self.superlist, self.used_superlist = self.used_superlist, self.superlist
 		self.superpower = random.choice(self.superlist)
-		#self.superpower = 'explosion'
+		#self.superpower = 'teleportation'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
