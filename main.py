@@ -19,7 +19,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			'superspeed', 'antigravity', 'teleportation',
 			'earthquake', 'big', 'small', 'x-ray', 
 			'explosion', 'freeze', 'sound',
-			'stone']
+			'stone', 'telepathy']
 		self.used_superlist = []
 		self.superpower = 'start'
 
@@ -53,7 +53,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.stone = [arcade.AnimationKeyframe(i, 150, stone)]
 		
 	def update(self, delta_time = 1/60):
-		self.timer_change += delta_time
+		#self.timer_change += delta_time
 
 		if self.timer_change >= 3:
 			self.timer_change = 0
@@ -79,6 +79,10 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower == 'antigravity':
 			g = random.randint(-1, 1)/10
 			self.screen.physics_engine.gravity_constant = g
+
+		# телепатия
+		if self.superpower == 'telepathy':
+			g = random.randint(-1, 1)/10
 			for sprite in self.screen.scene['Enemies']:
 				sprite.physics_engine.gravity_constant = g
 
@@ -107,7 +111,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if not self.superlist:
 			self.superlist, self.used_superlist = self.used_superlist, self.superlist
 		self.superpower = random.choice(self.superlist)
-		# self.superpower = 'stone'
+		self.superpower = 'telepathy'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -348,6 +352,7 @@ class Game(arcade.Window):
 			'-' : '',
 			'start' : 'каждые 3 секунды ты будешь получать супер-силу\nнадеюсь, это поможет тебе пройти уровень!',
 			'stone' : 'ты можешь превратиться в камень!',
+			'telepathy' : 'ты можешь поднимать врагов в воздух!'
 		}
 
 	def on_update(self, delta_time):
