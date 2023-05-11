@@ -18,7 +18,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 
 		self.superpower = 'start'
 		self.timer_superpower = 0
-		self.timer_change = -5
+		self.timer_change = 0
 
 		self.look = 'right'
 		self.shoot = False
@@ -56,7 +56,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 
 	def update(self, delta_time = 1/60):
 		self.timer_change += delta_time
-		if self.timer_change >= 10:
+		if self.timer_change >= 7:
 			self.timer_change = 0
 			if self.superpower == '-':
 				self.get_superpower()
@@ -106,11 +106,11 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		# self.superpower = 'explosion'
+		# self.superpower = 'superspeed'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
-			self.speed = 16
+			self.speed = 40
 
 		# размер
 		if self.superpower == 'big':
@@ -340,7 +340,7 @@ class Game(arcade.Window):
 			self.player.update_animation()
 			for exp in self.scene['Explosions']:
 				exp.update_animation()
-			position = Vec2(self.player.center_x - self.width / 2, 0)
+			position = Vec2(self.player.center_x - self.width / 2, self.player.center_y - self.height/3)
 			self.camera.move_to(position, 0.05)
 			if self.player.superpower == 'earthquake':
 				self.camera.shake(Vec2(random.randint(-2, 2), random.randint(-5, 5)), speed=1, damping=0.95)
@@ -349,7 +349,7 @@ class Game(arcade.Window):
 			self.player.update()
 		self.superpower_txt.text = self.descriptions[self.player.superpower]
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
-
+		self.superpower_txt.y = self.camera.position[1]+self.height-100
 
 	def on_draw(self):
 		self.clear()
@@ -357,7 +357,8 @@ class Game(arcade.Window):
 		#self.scene.draw_hit_boxes()
 		self.superpower_txt.draw()
 		self.hp_bar.draw_sized(
-			self.camera.position[0]+self.width/2, 20, 
+			self.camera.position[0]+self.width/2, 
+			self.camera.position[1]+20, 
 			self.player.hp*4, 10)
 
 	def on_key_press(self, key, modifiers):
