@@ -4,7 +4,6 @@ from pyglet.math import Vec2
 import math
 import PIL
 from PIL import Image
-# import os
 # pyinstaller --onefile --noconsole --clean main.py
 
 
@@ -18,52 +17,47 @@ class Player(arcade.AnimatedTimeBasedSprite):
 
 		self.superpower = 'start'
 		self.timer_superpower = 0
-		self.timer_change = 0
+		self.timer_change = -2
 
 		self.look = 'right'
 		self.shoot = False
 		self.animation = 'idle'
 		self.hp = 100
 
-	def setup(self):
+		frames_right = []
 		frames_left = []
-		for i in range(len(self.frames)):
-			frame = self.frames[i]
-			img = frame.texture.image.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT).convert('RGBA')
-			texture = arcade.Texture('player_img_'+str(i),image = img)
-			frames_left.append(arcade.AnimationKeyframe(i+4, 200, texture))
-		frames_right = self.frames
-
 		frames_run_right = []
 		frames_run_left = []
-		id = 8
+		for i in range(4):
+			image = 'hero_idle/tile00'+str(i)+'.png'
+			texture1, texture2 = arcade.load_texture_pair(image)
+			frames_right.append(arcade.AnimationKeyframe(i, 150, texture1))
+			frames_left.append(arcade.AnimationKeyframe(i+4, 150, texture2))
 		for i in range(10):
-			frame = 'character_run/tile00'+str(i)+'.png'
-			texture = arcade.Texture(frame+str(id), PIL.Image.open(frame).convert('RGBA'))
-			keyframe = arcade.AnimationKeyframe(id, 100, texture)
-			id+=1
-			texture2 = arcade.Texture(frame+str(id), PIL.Image.open(frame).transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT).convert('RGBA'))
-			keyframe2 = arcade.AnimationKeyframe(id, 100, texture2)
-			id+=1
-			frames_run_right.append(keyframe)
-			frames_run_left.append(keyframe2)
-
+			image = 'character_run/tile00'+str(i)+'.png'
+			texture1, texture2 = arcade.load_texture_pair(image)
+			frames_run_right.append(arcade.AnimationKeyframe(i+8, 50, texture1))
+			frames_run_left.append(arcade.AnimationKeyframe(i+16, 50, texture2))
 
 		self.animations = {
 			'idle': {'left':frames_left, 	 'right':frames_right},
 			'run' : {'left':frames_run_left, 'right':frames_run_right},
 		}
-
-	def update(self, delta_time = 1/60):
-		self.screen.physics_engine.update()
 		
-		#self.timer_change += delta_time
-		if self.timer_change >= 7:
+	def update(self, delta_time = 1/60):
+		self.timer_change += delta_time
+
+		if self.timer_change >= 3:
 			self.timer_change = 0
 			if self.superpower == '-':
 				self.get_superpower()
 			else:
 				self.remove_superpower()
+
+		# остановка времени
+		if self.superpower != 'freeze':
+			self.screen.physics_engine.update()
+			self.update_animation()
 
 		# телепортация
 		if self.superpower == 'teleportation':
@@ -98,9 +92,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		else:
 			if self.animation != 'idle':
 				self.change_animation('idle', self.look)
-
-		self.update_animation()
-
+		
 	def get_superpower(self):
 		self.remove_superpower()
 		self.superlist = [
@@ -110,7 +102,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower in self.superlist:
 			self.superlist.remove(self.superpower)
 		self.superpower = random.choice(self.superlist)
-		self.superpower = 'superspeed'
+		# self.superpower = 'explosion'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -178,29 +170,30 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 		self.timer_shoot = 0
 
 	def update(self, delta_time = 1/60):
-		self.physics_engine.update()
-		self.timer_shoot += delta_time
+		if self.screen.scene['Player']:
+			self.physics_engine.update()
+			self.timer_shoot += delta_time
 
-		if self. hp <= 0:
-			self.kill()
+			if self. hp <= 0:
+				self.kill()
 
-		distance = arcade.get_distance_between_sprites(self, self.screen.player)
-		self.change_x = 0
-		pos1 = (self.center_x, self.center_y)
-		pos2 = (self.screen.player.center_x, self.screen.player.center_y)
-		if distance < 500:
-			if distance > 0 and arcade.has_line_of_sight(pos1, pos2, self.screen.scene['Platforms'], 500, 31) and self.timer_shoot >= 1:
-				pos3 = (self.screen.player.center_x, self.center_y)
-				self.timer_shoot = 0
-				if pos3[0] > pos1[0]:
-					self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
-				else:
-					self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
-			if distance > 50:
-				if self.screen.player.center_x > self.center_x:
-					self.change_x = min(self.speed, distance)
-				if self.screen.player.center_x < self.center_x:
-					self.change_x = -min(self.speed, distance)
+			distance = arcade.get_distance_between_sprites(self, self.screen.player)
+			self.change_x = 0
+			pos1 = (self.center_x, self.center_y)
+			pos2 = (self.screen.player.center_x, self.screen.player.center_y)
+			if distance < 500:
+				if distance > 0 and arcade.has_line_of_sight(pos1, pos2, self.screen.scene['Platforms'], 500, 31) and self.timer_shoot >= 1:
+					pos3 = (self.screen.player.center_x, self.center_y)
+					self.timer_shoot = 0
+					if pos3[0] > pos1[0]:
+						self.screen.scene['Bullets'].append(Bullet(self.right+1, self.center_y, 40, self.screen))
+					else:
+						self.screen.scene['Bullets'].append(Bullet(self.left-1, self.center_y, -40, self.screen))
+				if distance > 50:
+					if self.screen.player.center_x > self.center_x:
+						self.change_x = min(self.speed, distance)
+					if self.screen.player.center_x < self.center_x:
+						self.change_x = -min(self.speed, distance)
 
 
 class Bullet(arcade.Sprite):
@@ -232,7 +225,7 @@ class Bullet(arcade.Sprite):
 		for enemy in arcade.check_for_collision_with_list(self, self.screen.scene['Enemies']):
 			self.kill()
 			enemy.hp -= 1
-			if self.screen.scene['Player'][0].superpower == 'explosion':
+			if self.screen.player and self.screen.player.superpower == 'explosion':
 				enemy.kill()
 				Explosion(self)
 		for player in arcade.check_for_collision_with_list(self, self.screen.scene['Player']):
@@ -292,7 +285,6 @@ class Game(arcade.Window):
 		self.tile_map = arcade.load_tilemap('map.tmx', 1.5, lp)
 		self.scene = arcade.Scene.from_tilemap(self.tile_map)
 		self.player = self.scene["Hero"][0]
-		self.player.setup()
 		
 		self.scene.add_sprite('Player',self.player)
 		for sprite in self.scene['Enemies']:
@@ -338,16 +330,14 @@ class Game(arcade.Window):
 			'freeze' : 'ты останавливаешь время!',
 			'sound' : 'у тебя супер-слух!',
 			'-' : '',
-			'start' : 'каждые 10 секунд ты будешь получать супер-силу\nнадеюсь, это поможет тебе пройти уровень!',
+			'start' : 'каждые 3 секунды ты будешь получать супер-силу\nнадеюсь, это поможет тебе пройти уровень!',
 		}
 
 	def on_update(self, delta_time):
 		self.camera.use()
 		if self.player and self.player.superpower != 'freeze':
 			self.scene['Bullets'].update()
-			
-			self.player.update()
-			
+			self.scene['Player'].update()
 			self.scene['Enemies'].update()
 			for exp in self.scene['Explosions']:
 				exp.update_animation()
@@ -358,20 +348,22 @@ class Game(arcade.Window):
 				self.camera.update()
 		else:
 			self.player.update()
-		#self.superpower_txt.text = self.descriptions[self.player.superpower]
-		self.superpower_txt.text = int(arcade.get_fps())
+		self.superpower_txt.text = self.descriptions[self.player.superpower]
+		#self.superpower_txt.text = int(arcade.get_fps())
+		if not self.scene['Player']:
+			self.superpower_txt.text = 'Ты умер'
 		self.superpower_txt.x = self.camera.position[0]+self.width/2
 		self.superpower_txt.y = self.camera.position[1]+self.height-100
 
 	def on_draw(self):
 		self.clear()
 		self.scene.draw()
-		#self.scene.draw_hit_boxes()
 		self.superpower_txt.draw()
 		self.hp_bar.draw_sized(
 			self.camera.position[0]+self.width/2, 
 			self.camera.position[1]+20, 
 			self.player.hp*4, 10)
+		#self.scene.draw_hit_boxes()
 
 	def on_key_press(self, key, modifiers):
 		if key == arcade.key.W and self.physics_engine.can_jump():
