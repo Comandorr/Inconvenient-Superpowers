@@ -15,10 +15,16 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		self.speed = 4
 		self.timer = 0
 
+		self.superlist = [
+			'superspeed', 'antigravity', 'teleportation',
+			'earthquake', 'big', 'small', 'x-ray', 
+			'explosion', 'freeze', 'sound',
+			'stone']
+		self.used_superlist = []
 		self.superpower = 'start'
-		self.timer_superpower = 0
-		self.timer_change = -2
 
+		self.timer_superpower = 0
+		self.timer_change = 0
 		self.look = 'right'
 		self.shoot = False
 		self.animation = 'idle'
@@ -43,6 +49,8 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			'idle': {'left':frames_left, 	 'right':frames_right},
 			'run' : {'left':frames_run_left, 'right':frames_run_right},
 		}
+		stone = arcade.load_texture('effects/stone.png')
+		self.stone = [arcade.AnimationKeyframe(i, 150, stone)]
 		
 	def update(self, delta_time = 1/60):
 		self.timer_change += delta_time
@@ -62,7 +70,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		# телепортация
 		if self.superpower == 'teleportation':
 			self.timer += delta_time
-			if self.timer >= 1:
+			if self.timer >= 0.7:
 				self.timer = 0
 				self.center_x += random.randint(-500, 500)
 				self.center_y = 150+random.randint(0, 200)
@@ -76,33 +84,30 @@ class Player(arcade.AnimatedTimeBasedSprite):
 
 		# движение
 		self.change_x = 0
-		if self.keys[arcade.key.D] and not self.keys[arcade.key.A]:
-			self.change_x = self.speed
-		elif self.keys[arcade.key.A] and not self.keys[arcade.key.D]:
-			self.change_x = -self.speed
+		if self.superpower != 'stone':
+			if self.keys[arcade.key.D] and not self.keys[arcade.key.A]:
+				self.change_x = self.speed
+			elif self.keys[arcade.key.A] and not self.keys[arcade.key.D]:
+				self.change_x = -self.speed
 
-		# смена анимации
-		if self.change_x != 0:
-			if self.change_x > 0:
-				self.look = 'right'
+			# смена анимации
+			if self.change_x != 0:
+				if self.change_x > 0:
+					self.look = 'right'
+				else:
+					self.look = 'left'
+				if self.animation != 'run':
+					self.change_animation('run', self.look)
 			else:
-				self.look = 'left'
-			if self.animation != 'run':
-				self.change_animation('run', self.look)
-		else:
-			if self.animation != 'idle':
-				self.change_animation('idle', self.look)
+				if self.animation != 'idle':
+					self.change_animation('idle', self.look)
 		
 	def get_superpower(self):
 		self.remove_superpower()
-		self.superlist = [
-			'superspeed', 'antigravity', 'teleportation',
-			'earthquake', 'big', 'small', 'x-ray', 
-			'explosion', 'freeze', 'sound']
-		if self.superpower in self.superlist:
-			self.superlist.remove(self.superpower)
+		if not self.superlist:
+			self.superlist, self.used_superlist = self.used_superlist, self.superlist
 		self.superpower = random.choice(self.superlist)
-		# self.superpower = 'explosion'
+		# self.superpower = 'stone'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -125,10 +130,17 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			for sprite in self.screen.scene['Platforms']:
 				sprite.visible = False
 
+		# землетрясение
 		if self.superpower == 'earthquake':
 			self.screen.mediaplayer = self.screen.earthquake_sound.play(loop=True)
 
-		self.change_animation(self.animation, self.look)
+		# камень
+		if self.superpower == 'stone':
+			self.frames = self.stone
+			self.cur_frame_idx = 0
+			self.update_animation()
+		else:
+			self.change_animation(self.animation, self.look)
 
 	def remove_superpower(self):
 		for sprite in self.screen.scene['Platforms']:
@@ -142,6 +154,10 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.center_y += 100
 		if self.screen.mediaplayer:
 			arcade.stop_sound(self.screen.mediaplayer)
+		if self.superpower in self.superlist:
+			self.superlist.remove(self.superpower)
+			self.used_superlist.append(self.superpower)
+		self.change_animation(self.animation, self.look)
 		self.superpower = '-'
 
 	def change_animation(self, animation, look):
@@ -331,6 +347,7 @@ class Game(arcade.Window):
 			'sound' : 'у тебя супер-слух!',
 			'-' : '',
 			'start' : 'каждые 3 секунды ты будешь получать супер-силу\nнадеюсь, это поможет тебе пройти уровень!',
+			'stone' : 'ты можешь превратиться в камень!',
 		}
 
 	def on_update(self, delta_time):
@@ -366,7 +383,7 @@ class Game(arcade.Window):
 		#self.scene.draw_hit_boxes()
 
 	def on_key_press(self, key, modifiers):
-		if key == arcade.key.W and self.physics_engine.can_jump():
+		if key == arcade.key.W and self.physics_engine.can_jump() and self.player.superpower != 'stone':
 			self.physics_engine.jump(8)
 		elif key in self.player.keys:
 			self.player.keys[key] = True
@@ -374,7 +391,7 @@ class Game(arcade.Window):
 			self.player.get_superpower()
 		elif key == arcade.key.F:
 			self.player.remove_superpower()
-		elif key == arcade.key.SPACE and self.player.superpower != 'freeze':
+		elif key == arcade.key.SPACE and self.player.superpower not in ['freeze', 'stone']:
 			if self.player.look == 'right':
 				self.scene['Bullets'].append(Bullet(self.player.right+1, self.player.center_y, 40, self))
 			else:
