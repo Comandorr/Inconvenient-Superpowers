@@ -55,6 +55,8 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		}
 
 	def update(self, delta_time = 1/60):
+		self.screen.physics_engine.update()
+		
 		#self.timer_change += delta_time
 		if self.timer_change >= 7:
 			self.timer_change = 0
@@ -96,6 +98,8 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		else:
 			if self.animation != 'idle':
 				self.change_animation('idle', self.look)
+
+		self.update_animation()
 
 	def get_superpower(self):
 		self.remove_superpower()
@@ -202,10 +206,15 @@ class Enemy(arcade.AnimatedTimeBasedSprite):
 class Bullet(arcade.Sprite):
 	def __init__(self, x, y, speed, screen):
 		if speed > 0:
-			super().__init__(":resources:images/space_shooter/laserBlue01.png", center_y=y)
+			super().__init__(
+				":resources:images/space_shooter/laserBlue01.png", 
+				center_y=y, hit_box_algorithm=None, scale=0.85)
 			self.left = x
 		else:
-			super().__init__(":resources:images/space_shooter/laserBlue01.png", center_y=y, flipped_horizontally=True)
+			super().__init__(
+				":resources:images/space_shooter/laserBlue01.png", 
+				center_y=y, hit_box_algorithm=None, scale=0.85,
+				flipped_horizontally=True)
 			self.right = x
 		self.change_x = speed
 		self.screen = screen
@@ -213,7 +222,6 @@ class Bullet(arcade.Sprite):
 			arcade.play_sound(self.screen.shoot_sound, 500)
 		else:
 			arcade.play_sound(self.screen.shoot_sound, 1)
-		self.update()
 
 	def update(self):
 		for wall in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
@@ -336,9 +344,11 @@ class Game(arcade.Window):
 	def on_update(self, delta_time):
 		self.camera.use()
 		if self.player and self.player.superpower != 'freeze':
-			self.physics_engine.update()
-			self.scene.update()
-			self.player.update_animation()
+			self.scene['Bullets'].update()
+			
+			self.player.update()
+			
+			self.scene['Enemies'].update()
 			for exp in self.scene['Explosions']:
 				exp.update_animation()
 			position = Vec2(self.player.center_x - self.width / 2, self.player.center_y - self.height/3)
