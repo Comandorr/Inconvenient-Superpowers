@@ -118,7 +118,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if not self.superlist:
 			self.superlist, self.used_superlist = self.used_superlist, self.superlist
 		self.superpower = random.choice(self.superlist)
-		#self.superpower = 'antigravity'
+		#self.superpower = 'small'
 
 		# суперскорость		
 		if self.superpower == 'superspeed':
@@ -128,7 +128,7 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		if self.superpower == 'big':
 			self.center_y += 100
 			self.scale = 5.5
-			self.collision_radius =150
+			self.collision_radius =140
 			for sp in arcade.check_for_collision_with_list(self, self.screen.scene['Platforms']):
 				sp.kill()
 			self.collision_radius =100
