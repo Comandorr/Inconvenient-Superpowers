@@ -10,14 +10,14 @@ from PIL import Image
 class Player(arcade.AnimatedTimeBasedSprite):
 	def __init__(self, filename, screen, scale):
 		super().__init__(filename, scale=1.5)
-		self.keys = {arcade.key.A:False, arcade.key.D:False}
+		self.keys = {arcade.key.A: False, arcade.key.D: False}
 		self.screen = screen
 		self.speed = 4
 		self.timer = 0
 
 		self.superlist = [
 			'superspeed', 'antigravity', 'teleportation',
-			'earthquake', 'big', 'small', 'x-ray', 
+			'earthquake', 'big', 'small', 'x-ray',
 			'explosion', 'freeze', 'sound',
 			'stone', 'telepathy']
 		self.used_superlist = []
@@ -35,23 +35,23 @@ class Player(arcade.AnimatedTimeBasedSprite):
 		frames_run_right = []
 		frames_run_left = []
 		for i in range(4):
-			image = 'hero_idle/tile00'+str(i)+'.png'
+			image = f'hero_idle/tile00{i}.png'
 			texture1, texture2 = arcade.load_texture_pair(image)
 			frames_right.append(arcade.AnimationKeyframe(i, 150, texture1))
-			frames_left.append(arcade.AnimationKeyframe(i+4, 150, texture2))
+			frames_left.append(arcade.AnimationKeyframe(i + 4, 150, texture2))
 		for i in range(10):
-			image = 'character_run/tile00'+str(i)+'.png'
+			image = f'character_run/tile00{i}.png'
 			texture1, texture2 = arcade.load_texture_pair(image)
-			frames_run_right.append(arcade.AnimationKeyframe(i+8, 50, texture1))
-			frames_run_left.append(arcade.AnimationKeyframe(i+16, 50, texture2))
+			frames_run_right.append(arcade.AnimationKeyframe(i + 8, 50, texture1))
+			frames_run_left.append(arcade.AnimationKeyframe(i + 16, 50, texture2))
 
 		self.animations = {
-			'idle': {'left':frames_left, 	 'right':frames_right},
-			'run' : {'left':frames_run_left, 'right':frames_run_right},
+			'idle': {'left': frames_left, 'right': frames_right},
+			'run': {'left': frames_run_left, 'right': frames_run_right},
 		}
 		stone = arcade.load_texture('effects/stone.png')
 		self.stone = [arcade.AnimationKeyframe(i, 150, stone)]
-		
+			
 	def update(self, delta_time = 1/60):
 		self.timer_change += delta_time
 
@@ -154,14 +154,14 @@ class Player(arcade.AnimatedTimeBasedSprite):
 			self.change_animation(self.animation, self.look)
 
 	def remove_superpower(self):
-		for sprite in self.screen.scene['Platforms']:
-			sprite.visible = True
+		for platform in self.screen.scene['Platforms']:
+			platform.visible = True
 		self.scale = 1.5
 		self.speed = 4	
 		self.screen.physics_engine.gravity_constant = 0.5
-		for sprite in self.screen.scene['Enemies']:
-			sprite.physics_engine.gravity_constant = 0.5
-		if self.superpower in ['big']:
+		for enemy in self.screen.scene['Enemies']:
+			enemy.physics_engine.gravity_constant = 0.5
+		if self.superpower == 'big':
 			self.center_y += 100
 		if self.screen.mediaplayer:
 			arcade.stop_sound(self.screen.mediaplayer)
@@ -186,21 +186,18 @@ class Player(arcade.AnimatedTimeBasedSprite):
 
 
 class Enemy(arcade.AnimatedTimeBasedSprite):
-	def __init__(self, filename, screen, **kwargs):
-		for i in ['flipped_horizontally', 'flipped_vertically', 'flipped_diagonally', 'hit_box_algorithm', 'hit_box_detail']:
-			del kwargs[i]
-		super().__init__(filename, **kwargs)
+	def __init__(self, filename, screen):
+		super().__init__(filename)
 		
-		#print(filename, kwargs['image_x'], kwargs['image_y'], kwargs['image_width'], kwargs['image_height'])\
 		self.texture_left = arcade.load_texture(
 			filename, 
-			kwargs['image_x'], kwargs['image_y'], 
-			kwargs['image_width'], kwargs['image_height'])			
+			image_x=0, image_y=0, 
+			image_width=0, image_height=0)			
 		self.texture_right = arcade.load_texture(
 			filename, 
-			kwargs['image_x'], kwargs['image_y'], 
-			kwargs['image_width'], kwargs['image_height'], 
-			mirrored = True)
+			image_x=0, image_y=0, 
+			image_width=0, image_height=0, 
+			mirrored=True)
 		
 		self.screen = screen
 		self.speed = 2
